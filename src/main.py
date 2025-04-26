@@ -20,10 +20,9 @@ def warpBack(warped_line, inverse_homog, target_shape = [1920, 1080]):
 def drawLine(warped, yardline = 50):
     h, w, c = warped.shape
     yard_percentage = yardline / 100
-    playable_field = w * (100 / 120)  # 100/120 of the field is playable
-    endzone_length = w * (10 / 120)
+    playable_field = w * (98 / 120)  # 98/120 of the field is a yard line
+    endzone_length = w * (11 / 120)  # first viable yard line is 11 yards from the end zone
     width_marker = int(endzone_length + (yard_percentage * playable_field))
-    alpha = 0.5
     line_img = warped.copy()
 
     line_width = 3
@@ -84,6 +83,9 @@ def getCorners(frame):
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
+    start_time = time.time()
+
+    # find the green pixels in the image
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     # mask = cv.inRange(hsv, (50, 70, 0), (100, 255, 170)) # data set green
     mask = cv.inRange(hsv, (50, 50, 0), (100, 255, 200))  # room green
@@ -92,27 +94,41 @@ def getCorners(frame):
     green = np.zeros_like(frame, np.uint8)
     green[imask] = frame[imask]
 
+    green_time = time.time()
+
+    # Erode to get rid of any misc green things in frame.
     erode_kernel_size = 5
     erode_kernel = np.ones((erode_kernel_size, erode_kernel_size), np.uint8) / (erode_kernel_size ** 2)
     green = cv.erode(green, erode_kernel, iterations=1)
 
+    erode1_time = time.time()
+
+    # Dilate to fill any holes the came from the center of the field
     dilate_kernel_size = 7
     dilate_kernel = np.ones((dilate_kernel_size, dilate_kernel_size), np.uint8) / (dilate_kernel_size ** 2)
     green = cv.dilate(green, dilate_kernel, iterations=5)
+
+    dilate_time = time.time()
 
     # cv.imshow('Dilated Green', green)
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
-    green = cv.erode(green, dilate_kernel, iterations=7)
+    # Erode back down to just the field
+    green = cv.erode(green, dilate_kernel, iterations=8)
+
+    erode2_time = time.time()
 
     # cv.imshow('Erode 2', green)
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
-    dilate_threshold = [1, 1, 1]
-    dilate_mask = (green > dilate_threshold).any(axis=2)
-    green[dilate_mask] = frame[dilate_mask]
+    # dilate_threshold = [0,0,0]
+    # dilate_mask = (green > dilate_threshold).any(axis=2)
+    # green[dilate_mask] = frame[dilate_mask]
+    green = np.where(green > 0, frame, 0)
+
+    mask_time = time.time()
 
     # cv.imshow('Thresholded Green', green)
     # cv.waitKey(0)
@@ -168,6 +184,13 @@ def getCorners(frame):
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
+    corner_time = time.time()
+
+    print("Green Time: " + str(green_time-start_time) + ". Erode 1 Time: " + str(erode1_time-green_time) +
+          ". Dilate Time: " + str(dilate_time-erode1_time) + ". Erode 2 Time: " + str(erode2_time-dilate_time) +
+          ". Mask Time: " + str(mask_time-erode2_time) + ". Corner Time: " + str(corner_time-mask_time) +
+          ". Total Time: " + str(corner_time-start_time) + ".")
+
     # If any of the corners match we didn't find enough corners to warp
     if np.array_equal(top_left, top_right) or np.array_equal(top_left, bottom_left) or np.array_equal(top_left,
                                                                                                       bottom_right):
@@ -183,22 +206,25 @@ def getCorners(frame):
 # Frame: A image that is to be processed
 def processFrame(frame):
     # Timer for testing
-    # start_time = time.time()
+    start_time = time.time()
 
     # get corners
     corners, _ = getCorners(frame)
     if corners == None: # Didn't find enough corners
         return frame
+    corner_time = time.time()
 
     # calculate homography and inverse homography
     homog, inverse_homog = calculateHomography(corners)
 
     # warp image
     warped = warpField(frame, homog)
+    homog_time = time.time()
 
     # draw line
     yardline = cv.getTrackbarPos('Yard Line', 'Yard Line')
     warped_line = drawLine(warped, yardline)
+    line_time = time.time()
 
     # warp back
     unwarped = warpBack(warped_line, inverse_homog)
@@ -207,8 +233,11 @@ def processFrame(frame):
     final = np.where(unwarped > 0, unwarped, frame)
 
     # Timer for testing
-    # end_time = time.time()
-    # print(end_time - start_time)
+    end_time = time.time()
+    print("Corner Time: " + str(corner_time-start_time) + ". Homog Time: " + str(homog_time-corner_time) +
+          ". Line Time: " + str(line_time-homog_time) + ". Unwarped Time: " + str(end_time-line_time) +
+          ". Total Time: " + str(end_time-start_time))
+
 
     # test print of things
     # cv.imshow('Display', final)

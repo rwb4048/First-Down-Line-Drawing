@@ -20,8 +20,8 @@ def warpBack(warped_line, inverse_homog, target_shape = [1920, 1080]):
 def drawLine(warped, yardline = 50):
     h, w, c = warped.shape
     yard_percentage = yardline / 100
-    playable_field = w * (98 / 120)  # 98/120 of the field is a yard line
-    endzone_length = w * (11 / 120)  # first viable yard line is 11 yards from the end zone
+    playable_field = w * (98 / 122)  # 98/122 of the field is a yard line
+    endzone_length = w * (12 / 122)  # first viable yard line is 12 yards from the end zone
     width_marker = int(endzone_length + (yard_percentage * playable_field))
     line_img = warped.copy()
 
@@ -83,7 +83,7 @@ def getCorners(frame):
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
-    start_time = time.time()
+    # start_time = time.time()
 
     # find the green pixels in the image
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
@@ -94,30 +94,30 @@ def getCorners(frame):
     green = np.zeros_like(frame, np.uint8)
     green[imask] = frame[imask]
 
-    green_time = time.time()
+    # green_time = time.time()
 
     # Erode to get rid of any misc green things in frame.
     erode_kernel_size = 5
     erode_kernel = np.ones((erode_kernel_size, erode_kernel_size), np.uint8) / (erode_kernel_size ** 2)
     green = cv.erode(green, erode_kernel, iterations=1)
 
-    erode1_time = time.time()
+    # erode1_time = time.time()
 
     # Dilate to fill any holes the came from the center of the field
     dilate_kernel_size = 7
     dilate_kernel = np.ones((dilate_kernel_size, dilate_kernel_size), np.uint8) / (dilate_kernel_size ** 2)
     green = cv.dilate(green, dilate_kernel, iterations=5)
 
-    dilate_time = time.time()
+    # dilate_time = time.time()
 
     # cv.imshow('Dilated Green', green)
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
     # Erode back down to just the field
-    green = cv.erode(green, dilate_kernel, iterations=8)
+    green = cv.erode(green, dilate_kernel, iterations=7)
 
-    erode2_time = time.time()
+    # erode2_time = time.time()
 
     # cv.imshow('Erode 2', green)
     # cv.waitKey(0)
@@ -128,13 +128,15 @@ def getCorners(frame):
     # green[dilate_mask] = frame[dilate_mask]
     green = np.where(green > 0, frame, 0)
 
-    mask_time = time.time()
+    # mask_time = time.time()
 
     # cv.imshow('Thresholded Green', green)
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
     thresh = 0.03
+    # thresh = cv.getTrackbarPos("Corner Threshold", "Parameters")/100
+    # if thresh == 0: thresh = 0.03 # default
     gray = cv.cvtColor(green, cv.COLOR_BGR2GRAY)
 
     dst = cv.cornerHarris(gray, 2, 15, 0.04)
@@ -184,12 +186,12 @@ def getCorners(frame):
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
-    corner_time = time.time()
+    # corner_time = time.time()
 
-    print("Green Time: " + str(green_time-start_time) + ". Erode 1 Time: " + str(erode1_time-green_time) +
-          ". Dilate Time: " + str(dilate_time-erode1_time) + ". Erode 2 Time: " + str(erode2_time-dilate_time) +
-          ". Mask Time: " + str(mask_time-erode2_time) + ". Corner Time: " + str(corner_time-mask_time) +
-          ". Total Time: " + str(corner_time-start_time) + ".")
+    # print("Green Time: " + str(green_time-start_time) + ". Erode 1 Time: " + str(erode1_time-green_time) +
+    #       ". Dilate Time: " + str(dilate_time-erode1_time) + ". Erode 2 Time: " + str(erode2_time-dilate_time) +
+    #       ". Mask Time: " + str(mask_time-erode2_time) + ". Corner Time: " + str(corner_time-mask_time) +
+    #       ". Total Time: " + str(corner_time-start_time) + ".")
 
     # If any of the corners match we didn't find enough corners to warp
     if np.array_equal(top_left, top_right) or np.array_equal(top_left, bottom_left) or np.array_equal(top_left,
@@ -206,25 +208,25 @@ def getCorners(frame):
 # Frame: A image that is to be processed
 def processFrame(frame):
     # Timer for testing
-    start_time = time.time()
+    # start_time = time.time()
 
     # get corners
     corners, _ = getCorners(frame)
     if corners == None: # Didn't find enough corners
         return frame
-    corner_time = time.time()
+    # corner_time = time.time()
 
     # calculate homography and inverse homography
     homog, inverse_homog = calculateHomography(corners)
 
     # warp image
     warped = warpField(frame, homog)
-    homog_time = time.time()
+    # homog_time = time.time()
 
     # draw line
-    yardline = cv.getTrackbarPos('Yard Line', 'Yard Line')
+    yardline = cv.getTrackbarPos('Yard Line', 'Parameters')
     warped_line = drawLine(warped, yardline)
-    line_time = time.time()
+    # line_time = time.time()
 
     # warp back
     unwarped = warpBack(warped_line, inverse_homog)
@@ -233,10 +235,10 @@ def processFrame(frame):
     final = np.where(unwarped > 0, unwarped, frame)
 
     # Timer for testing
-    end_time = time.time()
-    print("Corner Time: " + str(corner_time-start_time) + ". Homog Time: " + str(homog_time-corner_time) +
-          ". Line Time: " + str(line_time-homog_time) + ". Unwarped Time: " + str(end_time-line_time) +
-          ". Total Time: " + str(end_time-start_time))
+    # end_time = time.time()
+    # print("Corner Time: " + str(corner_time-start_time) + ". Homog Time: " + str(homog_time-corner_time) +
+    #       ". Line Time: " + str(line_time-homog_time) + ". Unwarped Time: " + str(end_time-line_time) +
+    #       ". Total Time: " + str(end_time-start_time))
 
 
     # test print of things
@@ -256,10 +258,10 @@ def startVideo():
         processed_frame = processFrame(frame)
 
         # Temp framerate
-        new_time = time.time()
-        fps = str(int(1 / (new_time - prev_time)))
-        prev_time = new_time
-        cv.putText(processed_frame, fps, (7, 70), cv.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv.LINE_AA)
+        # new_time = time.time()
+        # fps = str(int(1 / (new_time - prev_time)))
+        # prev_time = new_time
+        # cv.putText(processed_frame, fps, (7, 70), cv.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv.LINE_AA)
 
         cv.imshow('Display', processed_frame)
 
@@ -278,9 +280,10 @@ def startVideoParallel():
     pool = ThreadPool(processes=threadn)
     pending = deque()
 
-    cv.namedWindow("Yard Line")
-    cv.resizeWindow("Yard Line", 500, 45)
-    cv.createTrackbar("Yard Line", "Yard Line", 0, 100, nothing)
+    cv.namedWindow("Parameters")
+    cv.resizeWindow("Parameters", 500, 40)
+    cv.createTrackbar("Yard Line", "Parameters", 0, 100, nothing)
+    # cv.createTrackbar("Corner Threshold", "Parameters", 1, 10, nothing)
 
     # prev_time = 0
     while True:

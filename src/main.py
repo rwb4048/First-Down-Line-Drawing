@@ -34,8 +34,8 @@ def drawLine(warped, yardline=50, color=[0, 255, 255]):
 
 
     hsv = cv.cvtColor(line_img, cv.COLOR_BGR2HSV)
-    # mask = cv.inRange(hsv, (60, 70, 0), (100, 255, 170)) # data set
-    mask = cv.inRange(hsv, (50, 50, 0), (100, 255, 200))  # room
+    mask = cv.inRange(hsv, (60, 70, 0), (100, 255, 170)) # data set
+    # mask = cv.inRange(hsv, (50, 50, 0), (100, 255, 200))  # room
     imask = mask > 0
     yellow = np.zeros_like(line_img, np.uint8)
     yellow[:, :] = color
@@ -86,18 +86,18 @@ def getCorners(frame):
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
-    start_time = time.time()
+    # start_time = time.time()
 
     # find the green pixels in the image
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-    # mask = cv.inRange(hsv, (50, 70, 0), (100, 255, 170)) # data set green
-    mask = cv.inRange(hsv, (50, 50, 0), (100, 255, 200))  # room green
+    mask = cv.inRange(hsv, (50, 70, 0), (100, 255, 170)) # data set green
+    # mask = cv.inRange(hsv, (50, 50, 0), (100, 255, 200))  # room green
     # mask = cv.inRange(hsv, (50, 50, 0), (100, 255, 255))  # White and green I guess
     imask = mask > 0
     green = np.zeros_like(frame, np.uint8)
     green[imask] = frame[imask]
 
-    green_time = time.time()
+    # green_time = time.time()
 
     green = cv.cvtColor(green, cv.COLOR_BGR2GRAY)
 
@@ -106,14 +106,14 @@ def getCorners(frame):
     erode_kernel = np.ones((erode_kernel_size, erode_kernel_size), np.uint8) / (erode_kernel_size ** 2)
     green = cv.erode(green, erode_kernel, iterations=1)
 
-    erode1_time = time.time()
+    # erode1_time = time.time()
 
     # Dilate to fill any holes the came from the center of the field
     dilate_kernel_size = 7
     dilate_kernel = np.ones((dilate_kernel_size, dilate_kernel_size), np.uint8) / (dilate_kernel_size ** 2)
     green = cv.dilate(green, dilate_kernel, iterations=5)
 
-    dilate_time = time.time()
+    # dilate_time = time.time()
 
     # cv.imshow('Dilated Green', green)
     # cv.waitKey(0)
@@ -122,7 +122,7 @@ def getCorners(frame):
     # Erode back down to just the field
     green = cv.erode(green, dilate_kernel, iterations=7)
 
-    erode2_time = time.time()
+    # erode2_time = time.time()
 
     # cv.imshow('Erode 2', green)
     # cv.waitKey(0)
@@ -136,7 +136,7 @@ def getCorners(frame):
 
     green = np.where(green > 0, frame, 0)
 
-    mask_time = time.time()
+    # mask_time = time.time()
 
     # cv.imshow('Thresholded Green', green)
     # cv.waitKey(0)
@@ -194,12 +194,12 @@ def getCorners(frame):
     # cv.waitKey(0)
     # cv.destroyAllWindows()
 
-    corner_time = time.time()
+    # corner_time = time.time()
 
-    print("Green Time: " + str(green_time-start_time) + ". Erode 1 Time: " + str(erode1_time-green_time) +
-          ". Dilate Time: " + str(dilate_time-erode1_time) + ". Erode 2 Time: " + str(erode2_time-dilate_time) +
-          ". Mask Time: " + str(mask_time-erode2_time) + ". Corner Time: " + str(corner_time-mask_time) +
-          ". Total Time: " + str(corner_time-start_time) + ".")
+    # print("Green Time: " + str(green_time-start_time) + ". Erode 1 Time: " + str(erode1_time-green_time) +
+    #       ". Dilate Time: " + str(dilate_time-erode1_time) + ". Erode 2 Time: " + str(erode2_time-dilate_time) +
+    #       ". Mask Time: " + str(mask_time-erode2_time) + ". Corner Time: " + str(corner_time-mask_time) +
+    #       ". Total Time: " + str(corner_time-start_time) + ".")
 
     # If any of the corners match we didn't find enough corners to warp
     if np.array_equal(top_left, top_right) or np.array_equal(top_left, bottom_left) or np.array_equal(top_left,
@@ -232,6 +232,7 @@ def processFrame(frame):
     # homog_time = time.time()
 
     # draw line
+    yardline = 50
     yardline = cv.getTrackbarPos('Yard Line', 'Parameters')
     warped_line = drawLine(warped, yardline)
     scrimmage_line = cv.getTrackbarPos('Scrimmage', 'Parameters')
@@ -255,6 +256,12 @@ def processFrame(frame):
     # cv.imshow('Display', final)
     # cv.waitKey(0)
     # cv.destroyAllWindows()
+
+    # cv.imwrite("original.png", frame)
+    # cv.imwrite("warped.png", warped)
+    # cv.imwrite("warped_line.png", warped_line)
+    # cv.imwrite("unwarped.png", unwarped)
+    # cv.imwrite("final.png", final)
 
     return final
 
@@ -294,8 +301,8 @@ def startVideoParallel():
 
     cv.namedWindow("Parameters")
     cv.resizeWindow("Parameters", 500, 80)
-    cv.createTrackbar("Yard Line", "Parameters", 50, 100, nothing)
-    cv.createTrackbar('Scrimmage', 'Parameters', 30, 100, nothing)
+    cv.createTrackbar("Yard Line", "Parameters", 30, 100, nothing)
+    cv.createTrackbar('Scrimmage', 'Parameters', 20, 100, nothing)
     # cv.createTrackbar("Corner Threshold", "Parameters", 1, 10, nothing)
 
     # prev_time = 0
@@ -324,7 +331,7 @@ def startVideoParallel():
 
 def main():
     startVideoParallel()
-    # img = cv.imread('test_images/1.jpg')
+    # img = cv.imread('test_images/25.jpg')
     # processFrame(img)
     # directory_path = 'test_images'
     # for filename in os.listdir(directory_path):
@@ -334,6 +341,7 @@ def main():
 
 
 
+# Entry Point
 if __name__ == '__main__':
     main()
 
